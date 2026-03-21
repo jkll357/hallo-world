@@ -1,0 +1,97 @@
+version: "4.1"
+name: test_f103
+type: ARM
+deviceName: null
+packDir: .pack/Keil/STM32F1xx_DFP.2.3.0
+srcDirs:
+  - test_103cbt6
+virtualFolder:
+  name: <virtual_root>
+  files: []
+  folders: []
+dependenceList: []
+outDir: build
+miscInfo:
+  uid: 23d0803ef99c3d46be43eeb9f2374e11
+targets:
+  Debug:
+    cppPreprocessAttrs:
+      defineList:
+        - USE_HAL_DRIVER
+        - STM32F103xB
+        - HSE_VALUE=8000000
+      incList:
+        - .
+        - test_103cbt6/Core/Inc
+        - test_103cbt6/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy
+        - test_103cbt6/Drivers/STM32F1xx_HAL_Driver/Inc
+        - test_103cbt6/Drivers/CMSIS/Device/ST/STM32F1xx/Include
+        - test_103cbt6/Drivers/CMSIS/Include
+      libList: []
+    excludeList:
+      - test_103cbt6/Drivers/CMSIS/Device/ST
+    toolchain: GCC
+    toolchainConfigMap:
+      GCC:
+        archExtensions: ""
+        cpuType: Cortex-M3
+        floatingPointHardware: none
+        options:
+          version: 5
+          afterBuildTasks: []
+          asm-compiler:
+            ASM_FLAGS: ""
+          beforeBuildTasks: []
+          c/cpp-compiler:
+            CXX_FLAGS: ""
+            C_FLAGS: ""
+            language-c: c11
+            language-cpp: c++11
+            one-elf-section-per-data: true
+            one-elf-section-per-function: true
+            optimization: level-debug
+            warnings: all-warnings
+          global:
+            $float-abi-type: hard
+            misc-control: ""
+            not-use-syscalls: true
+            output-debug-info: enable
+            use-newlib-nano: true
+          linker:
+            $outputTaskExcludes:
+              - .bin
+            LD_FLAGS: ""
+            LIB_FLAGS: -lm
+            output-format: elf
+            remove-unused-input-sections: true
+        scatterFilePath: test_103cbt6/STM32F103XX_FLASH.ld
+        storageLayout:
+          RAM: []
+          ROM: []
+        useCustomScatterFile: true
+    uploadConfigMap:
+      JLink:
+        baseAddr: ""
+        bin: ""
+        cpuInfo:
+          cpuName: "null"
+          vendor: "null"
+        otherCmds: ""
+        proType: 1
+        speed: 8000
+      OpenOCD:
+        baseAddr: "0x08000000"
+        bin: ""
+        interface: stlink
+        target: stm32f1x
+      STLink:
+        address: "0x08000000"
+        bin: ""
+        elFile: None
+        optionBytes: .eide/debug.st.option.bytes.ini
+        otherCmds: ""
+        proType: JTAG
+        resetMode: default
+        runAfterProgram: true
+        speed: 4000
+    uploader: OpenOCD
