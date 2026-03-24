@@ -46,9 +46,10 @@
 
 /* USER CODE END PM */
 
-/* Private variables ---------------------------------------------------------
+/* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
 // 状态机变量
 struct app_smf_ctx g_app_smf_ctx;
 

@@ -180,7 +180,7 @@ void state_machine_init(void)
 void process_command(uint8_t *cmd, uint16_t length)
 {
     // 确保命令以换行符结束
-    cmd[length] = '\0';
+    if (length < UART_RX_BUFFER_SIZE) cmd[length] = '\0';
     
     // 处理状态切换命令
     if (strcmp((char*)cmd, "init") == 0)
