@@ -23,6 +23,8 @@
 /* USER CODE BEGIN 0 */
 #include <string.h>
 #include <stdio.h>
+#include "main.h"
+#include "command.h"
 
 // DMA 接收缓冲区 - 不需要volatile，DMA硬件直接访问内存
 #define UART_RX_BUFFER_SIZE 256
@@ -35,6 +37,10 @@ volatile uint16_t uart_rx_count = 0;    // 接收数据计数
 // 用户数据缓冲区 - 用于主循环处理
 volatile uint8_t uart_user_buffer[UART_RX_BUFFER_SIZE];
 volatile uint16_t uart_user_len = 0;
+
+// 命令处理相关变量
+static uint8_t rx_buffer[UART_RX_BUFFER_SIZE];
+static uint16_t rx_index = 0;
 
 /* USER CODE END 0 */
 
@@ -272,7 +278,21 @@ HAL_StatusTypeDef UART_SendData(uint8_t *pData, uint16_t Size)
     }
 
     // 启动新的发送
-    return HAL_UART_Transmit_DMA(&huart1, pData, Size);
+    HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(&huart1, pData, Size);
+    
+    // 等待发送完成（带超时）
+    tickstart = HAL_GetTick();
+    while (huart1.gState != HAL_UART_STATE_READY)
+    {
+        if ((HAL_GetTick() - tickstart) > 100)
+        {
+            // 超时：强制终止当前传输
+            HAL_UART_AbortTransmit(&huart1);
+            break;
+        }
+    }
+    
+    return status;
 }
 
 /**
@@ -316,6 +336,10 @@ void UART_HandleIdleInterrupt(void)
     // 计算接收到的数据长度
     uint16_t recv_len = UART_RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
     
+    // 重置DMA接收（停止后重新启动）
+    HAL_UART_DMAStop(&huart1);
+    HAL_UART_Receive_DMA(&huart1, uart_rx_buffer, UART_RX_BUFFER_SIZE);
+    
     if (recv_len > 0 && !uart_rx_flag)  // 确保上一次数据已被处理
     {
         // 复制数据到用户缓冲区
@@ -327,10 +351,6 @@ void UART_HandleIdleInterrupt(void)
         uart_rx_flag = 1;
         uart_rx_count = copy_len;
     }
-    
-    // 重置DMA接收（停止后重新启动）
-    HAL_UART_DMAStop(&huart1);
-    HAL_UART_Receive_DMA(&huart1, uart_rx_buffer, UART_RX_BUFFER_SIZE);
 }
 
 /**
@@ -349,6 +369,28 @@ uint8_t* UART_GetRxBufferPtr(void)
 uint16_t UART_GetRxCounter(void)
 {
     return __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
+}
+
+// 串口接收回调函数
+void UART_RxCallback(volatile uint8_t *data, uint16_t size)
+{
+    for (uint16_t i = 0; i < size; i++)
+    {
+        if (data[i] == '\r' || data[i] == '\n')
+        {
+            // 命令结束，处理命令
+            if (rx_index > 0)
+            {
+                process_command(rx_buffer, rx_index);
+                rx_index = 0;
+            }
+        }
+        else if (rx_index < UART_RX_BUFFER_SIZE - 1)
+        {
+            // 存储接收到的字符
+            rx_buffer[rx_index++] = data[i];
+        }
+    }
 }
 
 /* USER CODE END 1 */

@@ -28,7 +28,8 @@
             "editor.insertSpaces": true,
             "editor.tabSize": 4,
             "editor.autoIndent": "advanced"
-        }
+        },
+        "commentTranslate.source": "Bing"
     },
     "extensions": {
         "recommendations": [

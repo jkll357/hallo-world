@@ -57,7 +57,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 // 串口接收回调函数声明（用户需在其他文件中实现）
-void UART_RxCallback(uint8_t *data, uint16_t size);
+// void UART_RxCallback(uint8_t *data, uint16_t size);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

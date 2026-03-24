@@ -111,6 +111,8 @@ uint8_t* UART_GetRxBufferPtr(void);
   */
 uint16_t UART_GetRxCounter(void);
 
+void UART_RxCallback(volatile uint8_t *data, uint16_t size);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
