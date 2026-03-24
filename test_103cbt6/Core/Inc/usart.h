@@ -111,7 +111,7 @@ uint8_t* UART_GetRxBufferPtr(void);
   */
 uint16_t UART_GetRxCounter(void);
 
-void UART_RxCallback(volatile uint8_t *data, uint16_t size);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 
 /* USER CODE END Prototypes */
 

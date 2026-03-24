@@ -144,8 +144,8 @@ int main(void)
     // 检查是否有新数据接收
     if (uart_rx_flag)
     {
-        // 处理接收到的数据
-        UART_RxCallback(uart_user_buffer, uart_user_len);
+        // 处理接收到的数据 - 使用HAL库标准回调函数
+        HAL_UART_RxCpltCallback(&huart1);
         
         // 清除标志位
         uart_rx_flag = 0;

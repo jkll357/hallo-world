@@ -371,24 +371,31 @@ uint16_t UART_GetRxCounter(void)
     return __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
 }
 
-// 串口接收回调函数
-void UART_RxCallback(volatile uint8_t *data, uint16_t size)
+// 串口接收回调函数 - 符合HAL库标准
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    for (uint16_t i = 0; i < size; i++)
+    if (huart == &huart1)
     {
-        if (data[i] == '\r' || data[i] == '\n')
+        // 从用户缓冲区获取数据和长度
+        volatile uint8_t *data = uart_user_buffer;
+        uint16_t size = uart_user_len;
+        
+        for (uint16_t i = 0; i < size; i++)
         {
-            // 命令结束，处理命令
-            if (rx_index > 0)
+            if (data[i] == '\r' || data[i] == '\n')
             {
-                process_command(rx_buffer, rx_index);
-                rx_index = 0;
+                // 命令结束，处理命令
+                if (rx_index > 0)
+                {
+                    process_command(rx_buffer, rx_index);
+                    rx_index = 0;
+                }
             }
-        }
-        else if (rx_index < UART_RX_BUFFER_SIZE - 1)
-        {
-            // 存储接收到的字符
-            rx_buffer[rx_index++] = data[i];
+            else if (rx_index < UART_RX_BUFFER_SIZE - 1)
+            {
+                // 存储接收到的字符
+                rx_buffer[rx_index++] = data[i];
+            }
         }
     }
 }
