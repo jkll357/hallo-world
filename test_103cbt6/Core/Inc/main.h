@@ -32,6 +32,8 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "usart.h"
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -57,7 +59,7 @@ extern "C" {
 
 // 实现 Zephyr 特有的日志宏
 #define LOG_MODULE_REGISTER(name) 
-#define LOG_ERR(fmt, ...) 
+#define LOG_ERR(fmt, ...) UART_LogError(fmt)
 
 // 添加 bool 类型定义
 #include <stdbool.h>

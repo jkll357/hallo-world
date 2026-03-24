@@ -47,6 +47,27 @@ void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN Prototypes */
 
 /**
+  * @brief 发送单个字符
+  * @param ch: 要发送的字符
+  * @retval 发送的字符
+  */
+int UART_PutChar(char ch);
+
+/**
+  * @brief 简单的字符串输出函数
+  * @param str: 要输出的字符串
+  * @retval 输出的字符数
+  */
+int UART_PutString(const char *str);
+
+/**
+  * @brief 错误日志输出函数
+  * @param format: 错误信息
+  * @retval 输出的字符数
+  */
+int UART_LogError(const char *format);
+
+/**
   * @brief 初始化 DMA 接收中断模式
   */
 void UART_DMA_Receive_IT_Init(void);

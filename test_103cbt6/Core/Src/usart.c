@@ -193,6 +193,65 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 /* USER CODE BEGIN 1 */
 
 /**
+  * @brief 发送单个字符
+  * @param ch: 要发送的字符
+  * @retval 发送的字符
+  */
+int UART_PutChar(char ch)
+{
+    HAL_UART_Transmit(&huart1, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
+    return ch;
+}
+
+/**
+  * @brief 简单的字符串输出函数
+  * @param str: 要输出的字符串
+  * @retval 输出的字符数
+  */
+int UART_PutString(const char *str)
+{
+    int len = 0;
+    while (str[len] != '\0')
+    {
+        len++;
+    }
+    
+    if (len > 0)
+    {
+        HAL_UART_Transmit(&huart1, (uint8_t*)str, len, HAL_MAX_DELAY);
+    }
+    
+    return len;
+}
+
+/**
+  * @brief 错误日志输出函数
+  * @param format: 错误信息
+  * @retval 输出的字符数
+  */
+int UART_LogError(const char *format)
+{
+    int len = 0;
+    len += UART_PutString("[ERROR] ");
+    len += UART_PutString(format);
+    len += UART_PutString("\r\n");
+    return len;
+}
+
+/**
+  * @brief 重定向 _write 函数，使 printf 能够通过 USART 输出
+  * @param file: 文件描述符
+  * @param ptr: 数据指针
+  * @param len: 数据长度
+  * @retval 实际写入的长度
+  */
+int _write(int file, char *ptr, int len)
+{
+    HAL_UART_Transmit(&huart1, (uint8_t*)ptr, len, HAL_MAX_DELAY);
+    return len;
+}
+
+/**
   * @brief 通过 DMA 发送数据（非阻塞模式）
   * @param pData: 发送数据指针
   * @param Size: 数据长度
