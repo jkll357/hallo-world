@@ -33,6 +33,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 
 #include "usart.h"
+#include "smf.h"
 
 /* USER CODE END Includes */
 
@@ -49,21 +50,6 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 
-// 为 SMF 状态机添加必要的定义
-#define CONFIG_SMF_INSTRUMENTATION 1
-#define CONFIG_SMF_ANCESTOR_SUPPORT 1
-#define CONFIG_SMF_INITIAL_TRANSITION 1
-
-// 实现 Zephyr 特有的 IF_ENABLED 宏
-#define IF_ENABLED(condition, code) code
-
-// 实现 Zephyr 特有的日志宏
-#define LOG_MODULE_REGISTER(name) 
-#define LOG_ERR(fmt, ...) UART_LogError(fmt)
-
-// 添加 bool 类型定义
-#include <stdbool.h>
-
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -77,6 +63,30 @@ void UART_RxCallback(uint8_t *data, uint16_t size);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
+
+/* 状态机状态定义 */
+enum app_state {
+    STATE_INIT,
+    STATE_IDLE,
+    STATE_WORKING,
+    STATE_ERROR
+};
+
+/* 状态机上下文结构体 */
+struct app_smf_ctx {
+    struct smf_ctx ctx;
+    uint32_t state_counter;
+    uint32_t error_count;
+};
+
+/* 状态机变量 */
+extern struct app_smf_ctx g_app_smf_ctx;
+
+/* 状态指针声明 */
+extern struct smf_state *g_state_init;
+extern struct smf_state *g_state_idle;
+extern struct smf_state *g_state_working;
+extern struct smf_state *g_state_error;
 
 /* USER CODE END Private defines */
 

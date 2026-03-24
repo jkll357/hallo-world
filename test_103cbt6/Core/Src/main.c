@@ -21,6 +21,7 @@
 #include "dma.h"
 #include "usart.h"
 #include "gpio.h"
+#include "smf.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -44,14 +45,98 @@
 
 /* USER CODE END PM */
 
-/* Private variables ---------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------
 
-/* USER CODE BEGIN PV */
-// 发送缓冲区
-static uint8_t tx_buffer[UART_RX_BUFFER_SIZE];
-
+USER CODE BEGIN PV */
 // 接收缓冲区
 static uint8_t rx_buffer[UART_RX_BUFFER_SIZE];
+static uint16_t rx_index = 0;
+
+// 命令处理函数
+void process_command(uint8_t *cmd, uint16_t length)
+{
+    // 确保命令以换行符结束
+    cmd[length] = '\0';
+    
+    // 处理状态切换命令
+    if (strcmp((char*)cmd, "init") == 0)
+    {
+        UART_SendData((uint8_t*)"切换到初始化状态\r\n", strlen("切换到初始化状态\r\n"));
+        smf_set_state(&g_app_smf_ctx.ctx, g_state_init);
+    }
+    else if (strcmp((char*)cmd, "idle") == 0)
+    {
+        UART_SendData((uint8_t*)"切换到空闲状态\r\n", strlen("切换到空闲状态\r\n"));
+        smf_set_state(&g_app_smf_ctx.ctx, g_state_idle);
+    }
+    else if (strcmp((char*)cmd, "working") == 0)
+    {
+        UART_SendData((uint8_t*)"切换到工作状态\r\n", strlen("切换到工作状态\r\n"));
+        smf_set_state(&g_app_smf_ctx.ctx, g_state_working);
+    }
+    else if (strcmp((char*)cmd, "error") == 0)
+    {
+        UART_SendData((uint8_t*)"切换到错误状态\r\n", strlen("切换到错误状态\r\n"));
+        smf_set_state(&g_app_smf_ctx.ctx, g_state_error);
+    }
+    else if (strcmp((char*)cmd, "status") == 0)
+    {
+        UART_SendData((uint8_t*)"当前状态: ", strlen("当前状态: "));
+        if (g_app_smf_ctx.ctx.current == g_state_init)
+            UART_SendData((uint8_t*)"初始化\r\n", strlen("初始化\r\n"));
+        else if (g_app_smf_ctx.ctx.current == g_state_idle)
+            UART_SendData((uint8_t*)"空闲\r\n", strlen("空闲\r\n"));
+        else if (g_app_smf_ctx.ctx.current == g_state_working)
+            UART_SendData((uint8_t*)"工作\r\n", strlen("工作\r\n"));
+        else if (g_app_smf_ctx.ctx.current == g_state_error)
+            UART_SendData((uint8_t*)"错误\r\n", strlen("错误\r\n"));
+    }
+    else if (strcmp((char*)cmd, "help") == 0)
+    {
+        UART_SendData((uint8_t*)"命令列表:\r\n", strlen("命令列表:\r\n"));
+        UART_SendData((uint8_t*)"init - 切换到初始化状态\r\n", strlen("init - 切换到初始化状态\r\n"));
+        UART_SendData((uint8_t*)"idle - 切换到空闲状态\r\n", strlen("idle - 切换到空闲状态\r\n"));
+        UART_SendData((uint8_t*)"working - 切换到工作状态\r\n", strlen("working - 切换到工作状态\r\n"));
+        UART_SendData((uint8_t*)"error - 切换到错误状态\r\n", strlen("error - 切换到错误状态\r\n"));
+        UART_SendData((uint8_t*)"status - 显示当前状态\r\n", strlen("status - 显示当前状态\r\n"));
+        UART_SendData((uint8_t*)"help - 显示帮助信息\r\n", strlen("help - 显示帮助信息\r\n"));
+    }
+    else
+    {
+        UART_SendData((uint8_t*)"未知命令，请输入 'help' 查看命令列表\r\n", strlen("未知命令，请输入 'help' 查看命令列表\r\n"));
+    }
+}
+
+// 串口接收回调函数
+void UART_RxCallback(uint8_t *data, uint16_t size)
+{
+    for (uint16_t i = 0; i < size; i++)
+    {
+        if (data[i] == '\r' || data[i] == '\n')
+        {
+            // 命令结束，处理命令
+            if (rx_index > 0)
+            {
+                process_command(rx_buffer, rx_index);
+                rx_index = 0;
+            }
+        }
+        else if (rx_index < UART_RX_BUFFER_SIZE - 1)
+        {
+            // 存储接收到的字符
+            rx_buffer[rx_index++] = data[i];
+        }
+    }
+}
+
+// 状态机变量
+struct app_smf_ctx g_app_smf_ctx;
+
+// 状态定义
+struct smf_state *g_state_init;
+struct smf_state *g_state_idle;
+struct smf_state *g_state_working;
+struct smf_state *g_state_error;
 
 /* USER CODE END PV */
 
@@ -61,8 +146,105 @@ void SystemClock_Config(void);
 
 /* USER CODE END PFP */
 
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
+/* Private user code ---------------------------------------------------------
+USER CODE BEGIN 0 */
+
+// 状态处理函数
+
+// 初始化状态
+static void state_init_entry(void *obj)
+{
+    struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
+    char msg[64];
+    snprintf(msg, sizeof(msg), "[State Machine] Entering INIT state\r\n");
+    UART_SendData((uint8_t*)msg, strlen(msg));
+    app_ctx->state_counter = 0;
+    app_ctx->error_count = 0;
+}
+
+static enum smf_state_result state_init_run(void *obj)
+{
+    struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
+    // 初始化完成后跳转到空闲状态
+    smf_set_state(&app_ctx->ctx, g_state_idle);
+    return SMF_EVENT_HANDLED;
+}
+
+// 空闲状态
+static void state_idle_entry(void *obj)
+{
+    char msg[64];
+    snprintf(msg, sizeof(msg), "[State Machine] Entering IDLE state\r\n");
+    UART_SendData((uint8_t*)msg, strlen(msg));
+}
+
+static enum smf_state_result state_idle_run(void *obj)
+{
+    struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
+    app_ctx->state_counter++;
+    
+    // 每1000次循环跳转到工作状态
+    if (app_ctx->state_counter >= 1000)
+    {
+        smf_set_state(&app_ctx->ctx, g_state_working);
+        app_ctx->state_counter = 0;
+    }
+    
+    // 模拟错误检测
+    if (app_ctx->error_count > 5)
+    {
+        smf_set_state(&app_ctx->ctx, g_state_error);
+    }
+    
+    return SMF_EVENT_HANDLED;
+}
+
+// 工作状态
+static void state_working_entry(void *obj)
+{
+    char msg[64];
+    snprintf(msg, sizeof(msg), "[State Machine] Entering WORKING state\r\n");
+    UART_SendData((uint8_t*)msg, strlen(msg));
+}
+
+static enum smf_state_result state_working_run(void *obj)
+{
+    struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
+    app_ctx->state_counter++;
+    
+    // 工作500次循环后返回空闲状态
+    if (app_ctx->state_counter >= 500)
+    {
+        smf_set_state(&app_ctx->ctx, g_state_idle);
+        app_ctx->state_counter = 0;
+    }
+    
+    return SMF_EVENT_HANDLED;
+}
+
+// 错误状态
+static void state_error_entry(void *obj)
+{
+    char msg[64];
+    snprintf(msg, sizeof(msg), "[State Machine] Entering ERROR state\r\n");
+    UART_SendData((uint8_t*)msg, strlen(msg));
+}
+
+static enum smf_state_result state_error_run(void *obj)
+{
+    struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
+    app_ctx->state_counter++;
+    
+    // 错误状态持续1000次循环后返回空闲状态
+    if (app_ctx->state_counter >= 1000)
+    {
+        smf_set_state(&app_ctx->ctx, g_state_idle);
+        app_ctx->state_counter = 0;
+        app_ctx->error_count = 0; // 重置错误计数
+    }
+    
+    return SMF_EVENT_HANDLED;
+}
 
 /* USER CODE END 0 */
 
@@ -117,6 +299,45 @@ int main(void)
   HAL_Delay(50);
   UART_SendData((uint8_t*)prompt_msg, strlen(prompt_msg));
   
+  // 初始化状态机
+  // 定义状态
+  static struct smf_state init_state = {
+    .entry = state_init_entry,
+    .run = state_init_run,
+    .exit = NULL
+  };
+  
+  static struct smf_state idle_state = {
+    .entry = state_idle_entry,
+    .run = state_idle_run,
+    .exit = NULL
+  };
+  
+  static struct smf_state working_state = {
+    .entry = state_working_entry,
+    .run = state_working_run,
+    .exit = NULL
+  };
+  
+  static struct smf_state error_state = {
+    .entry = state_error_entry,
+    .run = state_error_run,
+    .exit = NULL
+  };
+  
+  // 赋值给全局指针
+  g_state_init = &init_state;
+  g_state_idle = &idle_state;
+  g_state_working = &working_state;
+  g_state_error = &error_state;
+  
+  // 初始化状态机上下文
+  smf_set_initial(&g_app_smf_ctx.ctx, g_state_init);
+  
+  // 发送欢迎信息
+  UART_SendData((uint8_t*)"状态机演示程序\r\n", strlen("状态机演示程序\r\n"));
+  UART_SendData((uint8_t*)"输入 'help' 查看命令列表\r\n", strlen("输入 'help' 查看命令列表\r\n"));
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -126,46 +347,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // 检查是否有新数据接收
-    if (UART_IsDataReceived())
-    {
-      // 获取接收到的数据
-      uint16_t len = UART_GetReceivedData(rx_buffer, sizeof(rx_buffer));
-      
-      if (len > 0)
-      {
-        // Echo 模式：将接收到的数据原样返回
-        // 添加换行符使输出更清晰
-        memcpy(tx_buffer, rx_buffer, len);
-        // 准备详细信息提示
-        char info_msg[64];
-        snprintf(info_msg, sizeof(info_msg), "\r\n[Received] Length: %d bytes\r\n", len);
-        UART_SendData((uint8_t*)info_msg, strlen(info_msg));
-        
-        // 发送数据内容（十六进制显示）
-        UART_SendData((uint8_t*)"Hex: ", 5);
-        for (uint16_t i = 0; i < len && i < 16; i++)  // 最多显示16字节
-        {
-          char hex_buf[4];
-          snprintf(hex_buf, sizeof(hex_buf), "%02X ", rx_buffer[i]);
-          UART_SendData((uint8_t*)hex_buf, strlen(hex_buf));
-        }
-        if (len > 16)
-        {
-          UART_SendData((uint8_t*)"...", 3);
-        }
-        UART_SendData((uint8_t*)"\r\n", 2);
-        // 发送回显数据
-        UART_SendData(tx_buffer, len);
-        
-        // 可选：发送换行符
-        // uint8_t newline[] = "\r\n";
-        // UART_SendData(newline, 2);
-      }
-    }
+    // 运行状态机
+    smf_run_state(&g_app_smf_ctx.ctx);
     
-    // 其他主循环任务...
-    HAL_Delay(1);  // 小延时，避免CPU占用过高
+    // 短暂延时，避免占用过多CPU资源
+    HAL_Delay(1);
   }
   /* USER CODE END 3 */
 }

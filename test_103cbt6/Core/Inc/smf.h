@@ -13,6 +13,23 @@
 #ifndef ZEPHYR_INCLUDE_SMF_H_
 #define ZEPHYR_INCLUDE_SMF_H_
 
+// 为 SMF 状态机添加必要的定义
+#define CONFIG_SMF_INSTRUMENTATION 1
+#define CONFIG_SMF_ANCESTOR_SUPPORT 1
+#define CONFIG_SMF_INITIAL_TRANSITION 1
+
+// 实现 Zephyr 特有的 IF_ENABLED 宏
+#define IF_ENABLED(condition, code) code
+
+// 实现 Zephyr 特有的日志宏
+#define LOG_MODULE_REGISTER(name) 
+#define LOG_ERR(fmt, ...) UART_SendData((uint8_t*)fmt, strlen(fmt))
+
+// 添加必要的类型定义
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+
 //#include <zephyr/sys/util.h>
 
 /**

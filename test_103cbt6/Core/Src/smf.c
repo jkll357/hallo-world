@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "main.h"
 #include "smf.h"
+#include "usart.h"
+#include "main.h"
+
 
 //#include <zephyr/logging/log.h>
 // LOG_MODULE_REGISTER(smf);
