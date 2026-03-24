@@ -25,19 +25,36 @@
 
 /* USER CODE BEGIN 0 */
 
-// 状态处理函数
+/**
+ * @brief 状态机处理函数
+ * 
+ * 包含状态机的四个状态：初始化、空闲、工作和错误状态
+ * 每个状态都有进入函数和运行函数
+ */
 
-// 初始化状态
+/**
+ * @brief 初始化状态进入函数
+ * @param obj 状态机上下文对象
+ * 
+ * 当状态机进入初始化状态时调用，初始化计数器并发送状态信息
+ */
 static void state_init_entry(void *obj)
 {
     struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
     char msg[64];
     snprintf(msg, sizeof(msg), "[State Machine] Entering INIT state\r\n");
     UART_SendData((uint8_t*)msg, strlen(msg));
-    app_ctx->state_counter = 0;
-    app_ctx->error_count = 0;
+    app_ctx->state_counter = 0;      // 重置状态计数器
+    app_ctx->error_count = 0;        // 重置错误计数器
 }
 
+/**
+ * @brief 初始化状态运行函数
+ * @param obj 状态机上下文对象
+ * @return 状态处理结果
+ * 
+ * 初始化完成后跳转到空闲状态
+ */
 static enum smf_state_result state_init_run(void *obj)
 {
     struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
@@ -46,7 +63,12 @@ static enum smf_state_result state_init_run(void *obj)
     return SMF_EVENT_HANDLED;
 }
 
-// 空闲状态
+/**
+ * @brief 空闲状态进入函数
+ * @param obj 状态机上下文对象
+ * 
+ * 当状态机进入空闲状态时调用，发送状态信息
+ */
 static void state_idle_entry(void *obj)
 {
     char msg[64];
@@ -54,19 +76,26 @@ static void state_idle_entry(void *obj)
     UART_SendData((uint8_t*)msg, strlen(msg));
 }
 
+/**
+ * @brief 空闲状态运行函数
+ * @param obj 状态机上下文对象
+ * @return 状态处理结果
+ * 
+ * 每1000次循环跳转到工作状态，同时检测错误状态
+ */
 static enum smf_state_result state_idle_run(void *obj)
 {
     struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
-    app_ctx->state_counter++;
+    app_ctx->state_counter++;        // 增加状态计数器
     
     // 每1000次循环跳转到工作状态
     if (app_ctx->state_counter >= 1000)
     {
         smf_set_state(&app_ctx->ctx, g_state_working);
-        app_ctx->state_counter = 0;
+        app_ctx->state_counter = 0;  // 重置计数器
     }
     
-    // 模拟错误检测
+    // 模拟错误检测：错误计数超过5时跳转到错误状态
     if (app_ctx->error_count > 5)
     {
         smf_set_state(&app_ctx->ctx, g_state_error);
@@ -75,7 +104,12 @@ static enum smf_state_result state_idle_run(void *obj)
     return SMF_EVENT_HANDLED;
 }
 
-// 工作状态
+/**
+ * @brief 工作状态进入函数
+ * @param obj 状态机上下文对象
+ * 
+ * 当状态机进入工作状态时调用，发送状态信息
+ */
 static void state_working_entry(void *obj)
 {
     char msg[64];
@@ -83,22 +117,34 @@ static void state_working_entry(void *obj)
     UART_SendData((uint8_t*)msg, strlen(msg));
 }
 
+/**
+ * @brief 工作状态运行函数
+ * @param obj 状态机上下文对象
+ * @return 状态处理结果
+ * 
+ * 工作500次循环后返回空闲状态
+ */
 static enum smf_state_result state_working_run(void *obj)
 {
     struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
-    app_ctx->state_counter++;
+    app_ctx->state_counter++;        // 增加状态计数器
     
     // 工作500次循环后返回空闲状态
     if (app_ctx->state_counter >= 500)
     {
         smf_set_state(&app_ctx->ctx, g_state_idle);
-        app_ctx->state_counter = 0;
+        app_ctx->state_counter = 0;  // 重置计数器
     }
     
     return SMF_EVENT_HANDLED;
 }
 
-// 错误状态
+/**
+ * @brief 错误状态进入函数
+ * @param obj 状态机上下文对象
+ * 
+ * 当状态机进入错误状态时调用，发送状态信息
+ */
 static void state_error_entry(void *obj)
 {
     char msg[64];
@@ -106,6 +152,13 @@ static void state_error_entry(void *obj)
     UART_SendData((uint8_t*)msg, strlen(msg));
 }
 
+/**
+ * @brief 错误状态运行函数
+ * @param obj 状态机上下文对象
+ * @return 状态处理结果
+ * 
+ * 错误状态持续1000次循环后返回空闲状态，并重置错误计数
+ */
 static enum smf_state_result state_error_run(void *obj)
 {
     struct app_smf_ctx *app_ctx = (struct app_smf_ctx *)obj;
@@ -115,36 +168,41 @@ static enum smf_state_result state_error_run(void *obj)
     if (app_ctx->state_counter >= 1000)
     {
         smf_set_state(&app_ctx->ctx, g_state_idle);
-        app_ctx->state_counter = 0;
-        app_ctx->error_count = 0; // 重置错误计数
+        app_ctx->state_counter = 0;      // 重置状态计数器
+        app_ctx->error_count = 0;        // 重置错误计数
     }
     
     return SMF_EVENT_HANDLED;
 }
 
-// 状态定义
+/**
+ * @brief 状态定义
+ * 
+ * 定义状态机的四个状态：初始化、空闲、工作和错误状态
+ * 每个状态包含进入函数和运行函数
+ */
 static struct smf_state init_state = {
-    .entry = state_init_entry,
-    .run = state_init_run,
-    .exit = NULL
+    .entry = state_init_entry,  // 初始化状态进入函数
+    .run = state_init_run,      // 初始化状态运行函数
+    .exit = NULL                // 无退出函数
 };
 
 static struct smf_state idle_state = {
-    .entry = state_idle_entry,
-    .run = state_idle_run,
-    .exit = NULL
+    .entry = state_idle_entry,  // 空闲状态进入函数
+    .run = state_idle_run,      // 空闲状态运行函数
+    .exit = NULL                // 无退出函数
 };
 
 static struct smf_state working_state = {
-    .entry = state_working_entry,
-    .run = state_working_run,
-    .exit = NULL
+    .entry = state_working_entry,  // 工作状态进入函数
+    .run = state_working_run,      // 工作状态运行函数
+    .exit = NULL                   // 无退出函数
 };
 
 static struct smf_state error_state = {
-    .entry = state_error_entry,
-    .run = state_error_run,
-    .exit = NULL
+    .entry = state_error_entry,  // 错误状态进入函数
+    .run = state_error_run,      // 错误状态运行函数
+    .exit = NULL                 // 无退出函数
 };
 
 /* USER CODE END 0 */

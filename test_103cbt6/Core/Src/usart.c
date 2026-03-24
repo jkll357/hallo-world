@@ -26,21 +26,42 @@
 #include "main.h"
 #include "command.h"
 
-// DMA 接收缓冲区 - 不需要volatile，DMA硬件直接访问内存
+/**
+ * @brief 串口相关定义和变量
+ */
+
+/**
+ * @brief 串口接收缓冲区大小
+ */
 #define UART_RX_BUFFER_SIZE 256
+
+/**
+ * @brief DMA接收缓冲区
+ * 
+ * 用于DMA直接访问，存储接收到的数据
+ * 不需要volatile，因为DMA硬件直接访问内存
+ */
 static uint8_t uart_rx_buffer[UART_RX_BUFFER_SIZE];
 
-// 接收状态标志和数据长度
-volatile uint8_t uart_rx_flag = 0;      // 接收完成标志
+/**
+ * @brief 接收状态标志和数据长度
+ */
+volatile uint8_t uart_rx_flag = 0;      // 接收完成标志，由IDLE中断设置
 volatile uint16_t uart_rx_count = 0;    // 接收数据计数
 
-// 用户数据缓冲区 - 用于主循环处理
+/**
+ * @brief 用户数据缓冲区
+ * 
+ * 用于主循环处理，存储从DMA缓冲区复制的数据
+ */
 volatile uint8_t uart_user_buffer[UART_RX_BUFFER_SIZE];
-volatile uint16_t uart_user_len = 0;
+volatile uint16_t uart_user_len = 0;     // 用户数据长度
 
-// 命令处理相关变量
-static uint8_t rx_buffer[UART_RX_BUFFER_SIZE];
-static uint16_t rx_index = 0;
+/**
+ * @brief 命令处理相关变量
+ */
+static uint8_t rx_buffer[UART_RX_BUFFER_SIZE];  // 命令缓冲区
+static uint16_t rx_index = 0;                  // 命令缓冲区索引
 
 /* USER CODE END 0 */
 
@@ -81,7 +102,12 @@ void MX_USART1_UART_Init(void)
 
 /**
   * @brief 初始化 DMA 接收中断模式
-  *         使用 IDLE 中断 + DMA 循环模式实现不定长数据接收
+  * @retval None
+  * 
+  * 使用 IDLE 中断 + DMA 循环模式实现不定长数据接收
+  * 1. 清除可能存在的IDLE标志位
+  * 2. 启用 IDLE 中断
+  * 3. 启动 DMA 循环接收
   */
 void UART_DMA_Receive_IT_Init(void)
 {
@@ -328,21 +354,28 @@ uint16_t UART_GetReceivedData(uint8_t *buffer, uint16_t max_len)
 }
 
 /**
-  * @brief 处理IDLE中断 - 在中断中只设置标志，不执行耗时操作
-  * @note 此函数在USART1_IRQHandler中调用
+  * @brief 处理IDLE中断
+  * @retval None
+  * @note 此函数在USART1_IRQHandler中调用，只设置标志，不执行耗时操作
+  * 
+  * 当检测到串口空闲时（数据传输结束），计算接收长度并设置标志
+  * 1. 计算接收到的数据长度
+  * 2. 重置DMA接收（停止后重新启动）
+  * 3. 复制数据到用户缓冲区
+  * 4. 设置标志位，通知主循环处理
   */
 void UART_HandleIdleInterrupt(void)
 {
-    // 计算接收到的数据长度
+    // 计算接收到的数据长度：缓冲区大小减去DMA当前计数器值
     uint16_t recv_len = UART_RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
     
-    // 重置DMA接收（停止后重新启动）
+    // 重置DMA接收（停止后重新启动），确保持续接收
     HAL_UART_DMAStop(&huart1);
     HAL_UART_Receive_DMA(&huart1, uart_rx_buffer, UART_RX_BUFFER_SIZE);
     
     if (recv_len > 0 && !uart_rx_flag)  // 确保上一次数据已被处理
     {
-        // 复制数据到用户缓冲区
+        // 复制数据到用户缓冲区，避免在中断中处理耗时操作
         uint16_t copy_len = (recv_len < UART_RX_BUFFER_SIZE) ? recv_len : UART_RX_BUFFER_SIZE;
         memcpy((void*)uart_user_buffer, uart_rx_buffer, copy_len);
         uart_user_len = copy_len;
@@ -371,7 +404,16 @@ uint16_t UART_GetRxCounter(void)
     return __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
 }
 
-// 串口接收回调函数 - 符合HAL库标准
+/**
+  * @brief 串口接收回调函数 - 符合HAL库标准
+  * @param huart UART句柄
+  * 
+  * 处理接收到的数据，解析命令并执行
+  * 1. 检查是否是USART1
+  * 2. 从用户缓冲区获取数据和长度
+  * 3. 解析数据，检测命令结束符
+  * 4. 处理完整的命令
+  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == &huart1)
@@ -388,12 +430,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
                 if (rx_index > 0)
                 {
                     process_command(rx_buffer, rx_index);
-                    rx_index = 0;
+                    rx_index = 0;  // 重置命令缓冲区索引
                 }
             }
             else if (rx_index < UART_RX_BUFFER_SIZE - 1)
             {
-                // 存储接收到的字符
+                // 存储接收到的字符到命令缓冲区
                 rx_buffer[rx_index++] = data[i];
             }
         }

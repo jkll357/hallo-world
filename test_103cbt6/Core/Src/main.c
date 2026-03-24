@@ -50,20 +50,36 @@
 
 /* USER CODE BEGIN PV */
 
-// 状态机变量
+/**
+ * @brief 全局变量定义
+ */
+
+/**
+ * @brief 状态机上下文
+ * 
+ * 包含状态机的当前状态和相关计数器
+ */
 struct app_smf_ctx g_app_smf_ctx;
 
-// 状态定义
-struct smf_state *g_state_init;
-struct smf_state *g_state_idle;
-struct smf_state *g_state_working;
-struct smf_state *g_state_error;
+/**
+ * @brief 状态指针定义
+ * 
+ * 指向状态机的四个状态：初始化、空闲、工作和错误状态
+ */
+struct smf_state *g_state_init;      // 初始化状态指针
+struct smf_state *g_state_idle;      // 空闲状态指针
+struct smf_state *g_state_working;   // 工作状态指针
+struct smf_state *g_state_error;     // 错误状态指针
 
-// 外部声明串口接收相关变量
-extern volatile uint8_t uart_rx_flag;
-extern volatile uint16_t uart_rx_count;
-extern volatile uint8_t uart_user_buffer[];
-extern volatile uint16_t uart_user_len;
+/**
+ * @brief 串口接收相关变量
+ * 
+ * 从usart.c文件外部声明的变量
+ */
+extern volatile uint8_t uart_rx_flag;     // 接收完成标志
+extern volatile uint16_t uart_rx_count;   // 接收数据计数
+extern volatile uint8_t uart_user_buffer[]; // 用户数据缓冲区
+extern volatile uint16_t uart_user_len;   // 用户数据长度
 
 /* USER CODE END PV */
 
@@ -81,6 +97,12 @@ USER CODE BEGIN 0 */
 /**
   * @brief  The application entry point.
   * @retval int
+  * 
+  * 主函数，程序的入口点
+  * 1. 初始化系统硬件
+  * 2. 配置串口和DMA
+  * 3. 初始化状态机
+  * 4. 进入主循环，处理串口数据和运行状态机
   */
 int main(void)
 {
@@ -106,9 +128,10 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USART1_UART_Init();
+  MX_GPIO_Init();     // 初始化GPIO
+  MX_DMA_Init();      // 初始化DMA
+  MX_USART1_UART_Init();  // 初始化USART1
+  
   /* USER CODE BEGIN 2 */
   
   // 初始化 DMA 接收中断模式（支持不定长数据接收）
