@@ -47,6 +47,21 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 
+// 为 SMF 状态机添加必要的定义
+#define CONFIG_SMF_INSTRUMENTATION 1
+#define CONFIG_SMF_ANCESTOR_SUPPORT 1
+#define CONFIG_SMF_INITIAL_TRANSITION 1
+
+// 实现 Zephyr 特有的 IF_ENABLED 宏
+#define IF_ENABLED(condition, code) code
+
+// 实现 Zephyr 特有的日志宏
+#define LOG_MODULE_REGISTER(name) 
+#define LOG_ERR(fmt, ...) 
+
+// 添加 bool 类型定义
+#include <stdbool.h>
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
